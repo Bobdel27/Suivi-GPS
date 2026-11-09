@@ -127,6 +127,7 @@ const plan=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{max
 const sat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'© Esri'});
 let voiceOn=false,spoken=new Set(),lastKm=0,offTrack=false,turns=[],isSat=false,pts=[],cum=[],line,done,startM,endM,curM,userM,watchId=null,timer=null,idx=0,bounds;
 
+function fitAll(){if(!bounds)return;map.fitBounds(bounds,{padding:[2,2]});map.setZoom(map.getZoom()+0.5,{animate:false});}
 const hav=(a,b)=>{const R=6371000,r=Math.PI/180,dl=(b.lat-a.lat)*r,dn=(b.lng-a.lng)*r;
   const x=Math.sin(dl/2)**2+Math.cos(a.lat*r)*Math.cos(b.lat*r)*Math.sin(dn/2)**2;return 2*R*Math.asin(Math.sqrt(x));};
 const fmtT=s=>{s=Math.round(s);const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?`${h}h${String(m).padStart(2,'0')}`:`${m} min`;};
@@ -157,11 +158,11 @@ function load(txt,fname){
   startM=L.marker(ll[0],{icon:ic('#3ddc84')}).addTo(map);
   endM=L.marker(ll[ll.length-1],{icon:ic('#ff4d4d')}).addTo(map);
   curM=L.marker(ll[0],{icon:L.divIcon({className:'',html:'<div class="cur"></div>',iconSize:[18,18],iconAnchor:[9,9]}),zIndexOffset:900}).addTo(map);
-  bounds=line.getBounds();map.fitBounds(bounds,{padding:[8,8]});
+  bounds=line.getBounds();map.fitBounds(bounds,{padding:[2,2]});
   buildTurns();spoken.clear();lastKm=0;offTrack=false;stats();$('name').textContent=g.name||fname;
   $('slider').max=pts.length-1;$('drop').classList.add('hide');
   openSheet(true);setIdx(0);
-  setTimeout(()=>{map.invalidateSize();map.fitBounds(bounds,{padding:[8,8]});},120);
+  setTimeout(()=>{map.invalidateSize();fitAll();},120);
 }
 
 function stats(){
@@ -278,7 +279,7 @@ $('bClear').onclick=()=>{
   const c=$('chart'),cx=c.getContext('2d');cx.clearRect(0,0,c.width,c.height);
   $('drop').classList.remove('hide');openSheet(false);map.setView([46.6,2.4],6);
 };
-$('bFit').onclick=()=>bounds&&map.fitBounds(bounds,{padding:[8,8]});
+$('bFit').onclick=fitAll;
 $('bSat').onclick=()=>{isSat=!isSat;isSat?(map.removeLayer(plan),sat.addTo(map)):(map.removeLayer(sat),plan.addTo(map));$('bSat').classList.toggle('on',isSat);};
 
 // Panneau repliable
