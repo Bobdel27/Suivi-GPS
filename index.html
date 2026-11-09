@@ -112,6 +112,7 @@ input[type=range]{width:100%;accent-color:var(--acc);margin-top:8px}
           <button class="btn ghost" id="bVoice">🔇 Voix</button>
           <button class="btn" id="bTrack">🟢 Suivi en direct</button>
         </div>
+        <div class="row"><button class="btn ghost" id="bJoin">🧭 Rejoindre l'itinéraire</button></div>
         <div id="live">Active le suivi pour voir ta progression sur la trace.</div>
       </div>
     </section>
@@ -125,7 +126,7 @@ const map=L.map('map',{zoomControl:false,zoomSnap:0.25}).setView([46.6,2.4],6);
 L.control.zoom({position:'bottomleft'}).addTo(map);
 const plan=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
 const sat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'© Esri'});
-let voiceOn=false,spoken=new Set(),lastKm=0,offTrack=false,turns=[],isSat=false,pts=[],cum=[],line,done,startM,endM,curM,userM,watchId=null,timer=null,idx=0,bounds;
+let joinL=null,voiceOn=false,spoken=new Set(),lastKm=0,offTrack=false,turns=[],isSat=false,pts=[],cum=[],line,done,startM,endM,curM,userM,watchId=null,timer=null,idx=0,bounds;
 
 function fitAll(){if(!bounds)return;map.invalidateSize();map.fitBounds(bounds,{padding:[14,14]});}
 const hav=(a,b)=>{const R=6371000,r=Math.PI/180,dl=(b.lat-a.lat)*r,dn=(b.lng-a.lng)*r;
@@ -268,7 +269,23 @@ $('bTrack').onclick=()=>{
   },err=>{$('live').textContent='Position refusée ou indisponible.';},{enableHighAccuracy:true,maximumAge:3000});
 };
 $('bLoc').onclick=()=>{if(userM)map.setView(userM.getLatLng(),Math.max(map.getZoom(),16));else $('bTrack').click();};
+$('bJoin').onclick=()=>{
+  if(!pts.length){alert('Charge d\'abord un itinéraire.');return;}
+  if(!navigator.geolocation){alert('Géolocalisation indisponible.');return;}
+  $('live').textContent='Recherche de ta position…';
+  navigator.geolocation.getCurrentPosition(pos=>{
+    const u={lat:pos.coords.latitude,lng:pos.coords.longitude};
+    let best=0,bd=Infinity;pts.forEach((p,i)=>{const d=hav(u,p);if(d<bd){bd=d;best=i;}});
+    joinL&&map.removeLayer(joinL);
+    joinL=L.polyline([[u.lat,u.lng],[pts[best].lat,pts[best].lng]],{color:'#ff7a3d',weight:4,dashArray:'8 8'}).addTo(map);
+    if(!userM)userM=L.marker([u.lat,u.lng],{icon:L.divIcon({className:'',html:'<div class="dot" style="background:#3b9cff"></div>',iconSize:[16,16],iconAnchor:[8,8]}),zIndexOffset:1000}).addTo(map);
+    else userM.setLatLng([u.lat,u.lng]);
+    map.fitBounds(L.latLngBounds([[u.lat,u.lng],[pts[best].lat,pts[best].lng]]).extend(bounds),{padding:[14,14]});
+    $('live').innerHTML=`<b>${bd<1000?Math.round(bd)+' m':(bd/1000).toFixed(1)+' km'}</b> pour rejoindre l'itinéraire`;
+  },()=>{$('live').textContent='Position refusée ou indisponible.';},{enableHighAccuracy:true,timeout:15000});
+};
 $('bClear').onclick=()=>{
+  joinL&&map.removeLayer(joinL);joinL=null;
   if(watchId!=null)$('bTrack').click();
   stopPlay();[line,done,startM,endM,curM].forEach(l=>l&&map.removeLayer(l));
   line=done=startM=endM=curM=null;pts=[];cum=[];turns=[];bounds=null;idx=0;spoken.clear();lastKm=0;offTrack=false;
