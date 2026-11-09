@@ -280,9 +280,9 @@ $('bJoin').onclick=()=>{
     if(!userM)userM=L.marker([u.lat,u.lng],{icon:L.divIcon({className:'',html:'<div class="dot" style="background:#3b9cff"></div>',iconSize:[16,16],iconAnchor:[8,8]}),zIndexOffset:1000}).addTo(map);
     else userM.setLatLng([u.lat,u.lng]);
     const t=pts[best];$('live').textContent='Calcul de la route…';
-    fetch(`https://router.project-osrm.org/route/v1/driving/${u.lng},${u.lat};${t.lng},${t.lat}?overview=full&geometries=geojson`)
+    fetch(`https://router.project-osrm.org/route/v1/driving/${u.lng},${u.lat};${t.lng},${t.lat}?overview=full&geometries=geojson&alternatives=3`)
       .then(r=>r.json()).then(j=>{
-        const r=j.routes&&j.routes[0];if(!r)throw 0;
+        const r=j.routes&&j.routes.slice().sort((a,b)=>a.distance-b.distance)[0];if(!r)throw 0;
         joinL=L.geoJSON(r.geometry,{style:{color:'#ff7a3d',weight:5,opacity:.95}}).addTo(map);
         map.fitBounds(joinL.getBounds().extend(bounds),{padding:[14,14]});
         const km=r.distance/1000;
