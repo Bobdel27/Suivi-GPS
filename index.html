@@ -276,12 +276,18 @@ $('bJoin').onclick=()=>{
   navigator.geolocation.getCurrentPosition(pos=>{
     const u={lat:pos.coords.latitude,lng:pos.coords.longitude};
     let best=0,bd=Infinity;pts.forEach((p,i)=>{const d=hav(u,p);if(d<bd){bd=d;best=i;}});
-    joinL&&map.removeLayer(joinL);
-    joinL=L.polyline([[u.lat,u.lng],[pts[best].lat,pts[best].lng]],{color:'#ff7a3d',weight:4,dashArray:'8 8'}).addTo(map);
+    joinL&&map.removeLayer(joinL);joinL=null;
     if(!userM)userM=L.marker([u.lat,u.lng],{icon:L.divIcon({className:'',html:'<div class="dot" style="background:#3b9cff"></div>',iconSize:[16,16],iconAnchor:[8,8]}),zIndexOffset:1000}).addTo(map);
     else userM.setLatLng([u.lat,u.lng]);
-    map.fitBounds(L.latLngBounds([[u.lat,u.lng],[pts[best].lat,pts[best].lng]]).extend(bounds),{padding:[14,14]});
-    $('live').innerHTML=`<b>${bd<1000?Math.round(bd)+' m':(bd/1000).toFixed(1)+' km'}</b> pour rejoindre l'itinéraire`;
+    const t=pts[best];$('live').textContent='Calcul de la route…';
+    fetch(`https://router.project-osrm.org/route/v1/driving/${u.lng},${u.lat};${t.lng},${t.lat}?overview=full&geometries=geojson`)
+      .then(r=>r.json()).then(j=>{
+        const r=j.routes&&j.routes[0];if(!r)throw 0;
+        joinL=L.geoJSON(r.geometry,{style:{color:'#ff7a3d',weight:5,opacity:.95}}).addTo(map);
+        map.fitBounds(joinL.getBounds().extend(bounds),{padding:[14,14]});
+        const km=r.distance/1000;
+        $('live').innerHTML=`<b>${km<1?Math.round(r.distance)+' m':km.toFixed(1)+' km'}</b> · ${fmtT(r.duration)} par la route pour rejoindre l'itinéraire`;
+      }).catch(()=>{$('live').textContent='Route introuvable (connexion ou service indisponible).';});
   },()=>{$('live').textContent='Position refusée ou indisponible.';},{enableHighAccuracy:true,timeout:15000});
 };
 $('bClear').onclick=()=>{
